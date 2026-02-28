@@ -1,3 +1,32 @@
+/// <reference types="cypress" />
+
+const SELECTORS = {
+  ingredientCard: 'li',
+  addButtonText: 'Добавить',
+  modalCloseButton: '#modals button[type="button"]',
+  modalRoot: '#modals'
+} as const;
+
+const INGREDIENTS = {
+  bun: 'Флюоресцентная булка R2-D3',
+  main: 'Биокотлета из марсианской Магнолии'
+} as const;
+
+const TEXT = {
+  ingredientDetailsTitle: 'Детали ингредиента',
+  orderButton: 'Оформить заказ',
+  orderNumber: '12345',
+  chooseBuns: 'Выберите булки',
+  chooseMain: 'Выберите начинку'
+} as const;
+
+const addIngredientToConstructor = (ingredientName: string) => {
+  cy.contains(ingredientName)
+    .parents(SELECTORS.ingredientCard)
+    .contains(SELECTORS.addButtonText)
+    .click();
+};
+
 describe('Страница конструктора', () => {
   beforeEach(() => {
     cy.intercept('GET', '**/api/ingredients', { fixture: 'ingredients.json' }).as(
@@ -31,56 +60,51 @@ describe('Страница конструктора', () => {
     cy.wait('@getIngredients');
   });
 
-  it('добавляет ингредиенты в конструктор', () => {
-    cy.contains('Флюоресцентная булка R2-D3')
-      .parents('li')
-      .contains('Добавить')
-      .click();
-    cy.contains('Биокотлета из марсианской Магнолии')
-      .parents('li')
-      .contains('Добавить')
-      .click();
+  afterEach(() => {
+    cy.clearCookie('accessToken');
+    cy.window().then((window) => {
+      window.localStorage.removeItem('refreshToken');
+    });
+  });
 
-    cy.contains('Флюоресцентная булка R2-D3 (верх)').should('exist');
-    cy.contains('Флюоресцентная булка R2-D3 (низ)').should('exist');
-    cy.contains('Биокотлета из марсианской Магнолии').should('exist');
+  it('добавляет ингредиенты в конструктор', () => {
+    addIngredientToConstructor(INGREDIENTS.bun);
+    addIngredientToConstructor(INGREDIENTS.main);
+
+    cy.contains(`${INGREDIENTS.bun} (верх)`).should('exist');
+    cy.contains(`${INGREDIENTS.bun} (низ)`).should('exist');
+    cy.contains(INGREDIENTS.main).should('exist');
   });
 
   it('открывает и закрывает модалку ингредиента (крестик и оверлей)', () => {
-    cy.contains('Флюоресцентная булка R2-D3').click();
+    cy.contains(INGREDIENTS.bun).click();
 
-    cy.contains('Детали ингредиента').should('exist');
-    cy.contains('Флюоресцентная булка R2-D3').should('exist');
+    cy.contains(TEXT.ingredientDetailsTitle).should('exist');
+    cy.contains(INGREDIENTS.bun).should('exist');
     cy.contains('643').should('exist');
 
-    cy.get('#modals button[type="button"]').first().click();
-    cy.contains('Детали ингредиента').should('not.exist');
+    cy.get(SELECTORS.modalCloseButton).first().click();
+    cy.contains(TEXT.ingredientDetailsTitle).should('not.exist');
 
-    cy.contains('Флюоресцентная булка R2-D3').click();
-    cy.contains('Детали ингредиента').should('exist');
-    cy.get('#modals').children().last().click({ force: true });
-    cy.contains('Детали ингредиента').should('not.exist');
+    cy.contains(INGREDIENTS.bun).click();
+    cy.contains(TEXT.ingredientDetailsTitle).should('exist');
+    cy.get(SELECTORS.modalRoot).children().last().click({ force: true });
+    cy.contains(TEXT.ingredientDetailsTitle).should('not.exist');
   });
 
   it('создает заказ, показывает номер и очищает конструктор', () => {
-    cy.contains('Флюоресцентная булка R2-D3')
-      .parents('li')
-      .contains('Добавить')
-      .click();
-    cy.contains('Биокотлета из марсианской Магнолии')
-      .parents('li')
-      .contains('Добавить')
-      .click();
+    addIngredientToConstructor(INGREDIENTS.bun);
+    addIngredientToConstructor(INGREDIENTS.main);
 
-    cy.contains('Оформить заказ').click();
+    cy.contains(TEXT.orderButton).click();
 
     cy.wait('@createOrder');
-    cy.contains('12345').should('exist');
+    cy.contains(TEXT.orderNumber).should('exist');
 
-    cy.get('#modals button[type="button"]').first().click();
-    cy.contains('12345').should('not.exist');
+    cy.get(SELECTORS.modalCloseButton).first().click();
+    cy.contains(TEXT.orderNumber).should('not.exist');
 
-    cy.contains('Выберите булки').should('exist');
-    cy.contains('Выберите начинку').should('exist');
+    cy.contains(TEXT.chooseBuns).should('exist');
+    cy.contains(TEXT.chooseMain).should('exist');
   });
 });
